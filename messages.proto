@@ -1,0 +1,23 @@
+syntax = 'proto3';
+
+message MessageFromClient {
+    string request = 1;
+    string username = 2;
+    string name = 3;
+    string username_friend = 4;
+    string name_friend = 5;
+    string text = 6;
+}
+
+message Friend {
+    string username = 1;
+    string name = 2;
+}
+
+message MessageFromServer {
+    string subject = 1;
+    string sender = 2;
+    string text = 3;
+    string username_friend = 4;
+    repeated Friend friends = 5;
+}
