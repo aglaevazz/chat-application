@@ -5,7 +5,7 @@ This is a simple client-server chat application. The user can currently access t
 Technologies used:
 - Python3
 - Sqlite3
-- Protobuf
+- Protobuf3
 
 In progess:
 - write unittests for Server
