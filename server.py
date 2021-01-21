@@ -7,35 +7,39 @@ import users
 
 
 class Server:
-    def __init__(self, host='0.0.0.0', port=10000):
+    def __init__(self, port=10000):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind((host, port))
+        # The following line is to reuse the port after it closed without a waiting time.
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # todo: set socket to be non-blocking
+        self.sock.bind(('localhost', port))
+        # todo: socket should listen to max 5 connection requests (5 = normal max)
         self.sock.listen(1)
         self.connections = {}
-        if __name__ == '__main__':
-            if not os.path.isfile('users.db'):
-                users.set_up_database()
-            self.run()
 
     def run(self):
         while True:
             connection, address = self.sock.accept()
+            # todo: handling of the messages is better placed in function 'handle_connection'(line 66)
             msg = self.receive_data(connection)
-            if msg.request == 'login':
+            if msg and msg.request == 'login':
                 self.login(msg, connection)
-            elif msg.request == 'sign up':
+            elif msg and msg.request == 'sign up':
                 self.sign_up(msg, connection)
+            # todo: third condition unknown message: close the connection
 
     def login(self, msg, connection):
         if users.is_user(msg.username, msg.name):
             if msg.username in self.connections:
                 data = self.create_protobuf_message('already logged in')
                 self.send_data(connection, data)
+                # User cannot login from two devices.
                 connection.close()
             else:
                 self.connections[msg.username] = connection
                 data = self.create_protobuf_message('logged in')
                 self.send_data(connection, data)
+                # todo: thread should be started inside handle_connection?
                 threading.Thread(target=self.handle_connection, args=(connection, msg.username)).start()
         else:
             data = self.create_protobuf_message('not a name/username: login failed')
@@ -48,6 +52,7 @@ class Server:
             self.connections[msg.username] = connection
             data = self.create_protobuf_message('signed up')
             self.send_data(connection, data)
+            # todo: thread should be started inside handle_connection?
             threading.Thread(target=self.handle_connection, args=(connection, msg.username)).start()
         else:
             data = self.create_protobuf_message('occupied username')
@@ -71,10 +76,12 @@ class Server:
             elif msg.request == 'message':
                 self.send_message_to_friend(msg, connection)
             elif msg.request == 'close':
-                self.handle_close_request(msg, username)
+                self.handle_close_request(msg, connection)
+            # todo: else message is unknown and connection should be closed
         return
 
     def add_friend(self, msg, connection):
+        # todo: rename username_friend to friends_username, name_friend to friends_name
         if users.is_user(msg.username_friend, msg.name_friend):
             if users.is_friend(msg.username, msg.username_friend):
                 data = self.create_protobuf_message('is friend', username_friend=msg.username_friend)
@@ -109,6 +116,7 @@ class Server:
             else:
                 users.add_pending_message(msg.username_friend, msg.username, msg.text)
         else:
+            # messages can only be send to friends
             data = self.create_protobuf_message('not a friend', username_friend=msg.username_friend)
             self.send_data(connection, data)
 
@@ -116,7 +124,6 @@ class Server:
         data = self.create_protobuf_message('closed')
         self.send_data(connection, data)
         del self.connections[msg.username]
-        connection.close()
 
     @staticmethod
     def create_protobuf_message(subject, sender='server', text='', username_friend='', friends=''):
@@ -125,6 +132,9 @@ class Server:
         msg.sender = sender
         msg.text = text
         msg.username_friend = username_friend
+        # If list of friends was requested the field friends will hold it.
+        # Each friend is represented as a protobuf message.
+        # todo: this could be done without creating a protobuf message for each friend
         for friend in friends:
             proto_friend = schema.Friend()
             proto_friend.username = friend[0]
@@ -134,22 +144,36 @@ class Server:
 
     @staticmethod
     def send_data(connection, data):
+        # Serializes data (protobuf message) to a binary string
         bytes_string = data.SerializeToString()
+        # todo: Should check for errors sending the data. E.g. connection could be broken.
+        #  Also 'sendall' returns None on success.
         connection.sendall(bytes_string)
 
     def receive_data(self, connection, username=None):
+        # todo: solve problem if message is bigger than 1024
         bytes_string = connection.recv(1024)
         if bytes_string:
             msg = schema.MessageFromClient()
             msg.ParseFromString(bytes_string)
             return msg
         elif username in self.connections:
+            # delete connection from current connections if no message has been received.
             del self.connections[username]
         connection.close()
+
+    def close(self):
+        # SHUT_RDWR = further sends and receives are not allowed.
+        self.sock.shutdown(socket.SHUT_RDWR)
+        # Releases the resource.
+        self.sock.close()
 
 
 if __name__ == '__main__':
     server = Server()
+    if not os.path.isfile('users.db'):
+        users.set_up_database()
+    server.run()
 
 
 

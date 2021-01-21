@@ -9,8 +9,11 @@ class TerminalUI:
     def __init__(self):
         self.client = Client()
         self.register_callbacks()
+        # todo: rename request_thread to 'get_users_requests_thread' or something else more descriptive
+        # thread will be started in 'login_or_signup'
         self.request_thread = threading.Thread(target=self.request)
         self.request_thread.daemon = True
+        # todo: 'login_or_signup' should be part of the thread to make the code less complicated
         self.login_or_signup()
 
     def register_callbacks(self):
@@ -57,7 +60,9 @@ class TerminalUI:
         username = input('Please chose and enter a username: ')
         return username, name
 
+    # todo: rename request to 'get_users_requests' or something else more descriptive
     def request(self):
+        # todo: can be replaced with 'while True'
         running = True
         while running:
             print('''
@@ -65,8 +70,9 @@ class TerminalUI:
             Add a new friend: enter 'a'
             Delete a friend:  enter 'd'
             Get a list of your friends: enter 'l'
-            Close the connection: enter 'c'\n
+            Exit the program: enter 'e'\n
             ''')
+            # todo: rename 'command' to 'request' in line with the methods name
             command = input()
             if command == 'm':
                 self.send_message()
@@ -76,15 +82,15 @@ class TerminalUI:
                 self.client.request_friends_list()
             elif command == 'd':
                 self.delete_friend()
-            elif command == 'c':
+            elif command == 'e':
                 self.client.logout()
-                running = False
+                return
             else:
                 print("Sorry, I didn't understand your input...")
             time.sleep(2)
         return
 
-    # Additional functions to execute user-requests:
+    # execute user-requests:
     def send_message(self):
         friends_username = input('Please enter the username of the recipient: ')
         message = input('Please enter your message: ')
@@ -101,6 +107,7 @@ class TerminalUI:
 
     # Callback functions that will be called by the Client upon incoming messages from the Server:
     @staticmethod
+    # todo: rename 'on_fail' to 'on_general_error' or something else more descriptive
     def on_fail():
         print('Sorry, there has been a problem. Please restart the program.')
         sys.exit()
@@ -133,7 +140,7 @@ class TerminalUI:
 
     @staticmethod
     def on_friend_is_not_a_user(msg):
-        print(f"Sorry, {msg.username_friend} is not a user and couldn’t be added.")
+        print(f"Sorry, {msg.username_friend} is not a user and couldn't be added.")
 
     def on_connection_closed(self):
         self.request_thread.join()

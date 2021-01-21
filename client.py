@@ -11,13 +11,16 @@ class Client:
         self.connected = False
 
         # register callbacks
+        # todo: rename fail_callback to 'general_error' or something else more descriptive
         self.fail_callback = None
         self.sign_up_success_callback = None
         self.sign_up_failed_occupied_username_callback = None
         self.login_success_callback = None
         self.login_failed_not_a_user_callback = None
         self.login_failed_already_logged_in_callback = None
+        # todo: rename new_message_callback to 'new_message_for_user_callback' or something else more descriptive
         self.new_message_callback = None
+        # todo: rename friends_list_callback to 'list_of_friends_callback' or something else more descriptive
         self.friends_list_callback = None
         self.is_friend_callback = None
         self.friend_added_callback = None
@@ -37,10 +40,12 @@ class Client:
             elif msg.subject == 'not a name/username: login failed':
                 self.login_failed_not_a_user_callback()
             elif msg.subject == 'signed up':
+                # todo: rename to 'sign_up_succeeded'
                 self.sign_up_success_callback()
             elif msg.subject == 'occupied username':
                 self.sign_up_failed_occupied_username_callback()
             elif msg.subject == 'message':
+                # todo: rename see line 21
                 if self.new_message_callback:
                     self.new_message_callback(msg)
             elif msg.subject == 'friends list':
@@ -65,11 +70,12 @@ class Client:
                 self.connected = False
                 if self.connection_closed_callback:
                     self.connection_closed_callback()
+            # no message received or message is unknown
             else:
                 if self.fail_callback:
                     self.fail_callback()
 
-# Requests the Client sends to the server:
+    # Requests the Client sends to the server:
     def sign_up(self, username, name):
         self.username, self.name = username, name
         self.connect_to_server('sign up')
@@ -98,11 +104,12 @@ class Client:
         protobuf_message = self.create_protobuf_message('message', username_friend, message)
         self.send_data(protobuf_message)
 
-    # Basic functions to connect and send data to the server.
+    # Basic methods to connect and send data to the server.
     def connect_to_server(self, request):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('0.0.0.0', 10000))
-        protobuf_message = self.create_protobuf_message(request, self.username, self.name)
+        self.sock.connect(('localhost', 10000))
+        # request is 'login' for login or 'sign up' for sign up.
+        protobuf_message = self.create_protobuf_message(request)
         self.send_data(protobuf_message)
         self.connected = True
         self.receive_loop()
@@ -118,10 +125,13 @@ class Client:
         return protobuf_message
 
     def send_data(self, protobuf_message):
+        # todo: Should check for errors sending the data. E.g. connection could be broken.
+        #  Also 'sendall' returns None on success.
         bytes_string = protobuf_message.SerializeToString()
         self.sock.sendall(bytes_string)
 
     def receive_data(self):
+        # todo: solve problem if message is bigger than 1024
         bytes_string = self.sock.recv(1024)
         msg = schema.MessageFromServer()
         msg.ParseFromString(bytes_string)
