@@ -1,6 +1,6 @@
 # This project is in progress
 
-This is a simple client-server chat application. The user can currently access the chat via a terminal-UI. I will also implement a PyQt-UI in the future. The client and the server use protobuf messages to communicate with each other. The server connects to a Sqlite database that stores users, their friends and pending messages (messages received when recipient was not connected).
+This is a multi-platform client-server chat application. The client and the server use protobuf messages to communicate language-independently. The server connects to an SQLite database that stores user-information and pending messages (messages received when the recipient was not connected). The user can currently access the chat via a terminal-UI. I will also implement a UI with Java using Swing in the future.
 
 Technologies used:
 - Python3
@@ -8,9 +8,9 @@ Technologies used:
 - Protobuf3
 
 In progess:
-- write unittests for Server
+- write unit tests for server
 
 To do:
-- write unittests for Client
-- test and fix bugs
-- create UI with PyQt
+- write unit tests for client
+- optimize code (see todos)
+- create UI with Java using Swing
