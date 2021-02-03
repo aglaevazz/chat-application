@@ -12,5 +12,5 @@ In progess:
 
 To do:
 - write unit tests for client
-- optimize code (see todos)
+- optimize code (see todos in code)
 - create UI with Java using Swing
