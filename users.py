@@ -55,8 +55,7 @@ def list_friends(username):
     # todo: replace logic with context-manager ('with db: )
     db = sqlite3.connect('users.db')
     c = db.cursor()
-    query = f"select * from {username};"
-    c.execute(query)
+    c.execute(f"select * from {username};")
     result = c.fetchall()
     db.close()
     return result
@@ -79,8 +78,7 @@ def add_to_table(table, values):
     # todo: replace logic with context-manager ('with db: )
     db = sqlite3.connect('users.db')
     c = db.cursor()
-    query = f"insert into {table} values {values}"
-    c.execute(query)
+    c.execute(f"insert into {table} values {values}")
     db.commit()
     db.close()
 
@@ -89,8 +87,7 @@ def is_in_table(table, column, element):
     # todo: replace logic with context-manager ('with db: )
     db = sqlite3.connect('users.db')
     c = db.cursor()
-    query = f"select count(*) from {table} where {column} = '{element}';"
-    c.execute(query)
+    c.execute(f"select count(*) from {table} where {column} = '{element}';")
     result = c.fetchall()[0][0]
     db.close()
     return result
@@ -100,7 +97,6 @@ def delete_from_table(table, username):
     # todo: replace logic with context-manager ('with db: )
     db = sqlite3.connect('users.db')
     c = db.cursor()
-    query = f"delete from {table} where friends_username = '{username}'"
-    c.execute(query)
+    c.execute(f"delete from {table} where friends_username = '{username}'")
     db.commit()
     db.close()

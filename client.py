@@ -1,5 +1,4 @@
-import socket
-
+from data_transfer import DataTransfer
 import messages_pb2 as schema
 
 
@@ -7,8 +6,9 @@ class Client:
     def __init__(self):
         self.username = None
         self.name = None
-        self.sock = None
         self.connected = False
+        self.data_transfer = None
+        self.initiate_data_transfer()
 
         # register callbacks
         # todo: rename fail_callback to 'general_error' or something else more descriptive
@@ -29,90 +29,107 @@ class Client:
         self.friend_is_not_a_user_callback = None
         self.connection_closed_callback = None
 
+    def initiate_data_transfer(self):
+        self.data_transfer = DataTransfer()
+        self.data_transfer.set_up()
+
     # The receive-loop is running in the UI's-Main-Thread.
     def receive_loop(self):
         while self.connected:
-            msg = self.receive_data()
-            if msg.subject == 'logged in':
-                self.login_success_callback()
-            elif msg.subject == 'already logged in':
-                self.login_failed_already_logged_in_callback()
-            elif msg.subject == 'not a name/username: login failed':
-                self.login_failed_not_a_user_callback()
-            elif msg.subject == 'signed up':
-                # todo: rename to 'sign_up_succeeded'
-                self.sign_up_success_callback()
-            elif msg.subject == 'occupied username':
-                self.sign_up_failed_occupied_username_callback()
-            elif msg.subject == 'message':
-                # todo: rename see line 21
-                if self.new_message_callback:
-                    self.new_message_callback(msg)
-            elif msg.subject == 'friends list':
-                if self.friends_list_callback:
-                    self.friends_list_callback(msg)
-            elif msg.subject == 'is friend':
-                if self.is_friend_callback:
-                    self.is_friend_callback(msg)
-            elif msg.subject == 'friend added':
-                if self.friend_added_callback:
-                    self.friend_added_callback(msg)
-            elif msg.subject == 'not a friend':
-                if self.not_a_friend_callback:
-                    self.not_a_friend_callback(msg)
-            elif msg.subject == 'friend is not a user':
-                if self.friend_is_not_a_user_callback:
-                    self.friend_is_not_a_user_callback(msg)
-            elif msg.subject == 'friend deleted':
-                if self.friend_deleted_callback:
-                    self.friend_deleted_callback(msg)
-            elif msg.subject == 'closed':
-                self.connected = False
-                if self.connection_closed_callback:
-                    self.connection_closed_callback()
-            # no message received or message is unknown
+            bytes_string = self.data_transfer.receive_data()
+            if bytes_string:
+                msg = schema.MessageFromServer()
+                msg.ParseFromString(bytes_string)
+                if msg.subject == 'logged in':
+                    if self.login_success_callback:
+                        self.login_success_callback()
+                elif msg.subject == 'already logged in':
+                    if self.login_failed_already_logged_in_callback:
+                        self.login_failed_already_logged_in_callback()
+                elif msg.subject == 'not a name/username: login failed':
+                    if self.login_failed_not_a_user_callback:
+                        self.login_failed_not_a_user_callback()
+                elif msg.subject == 'signed up':
+                    # todo: rename to 'sign_up_succeeded'
+                    if self.sign_up_success_callback:
+                        self.sign_up_success_callback()
+                elif msg.subject == 'occupied username':
+                    if self.sign_up_failed_occupied_username_callback:
+                        self.sign_up_failed_occupied_username_callback()
+                elif msg.subject == 'message':
+                    # todo: rename see line 21
+                    if self.new_message_callback:
+                        self.new_message_callback(msg)
+                elif msg.subject == 'friends list':
+                    if self.friends_list_callback:
+                        self.friends_list_callback(msg)
+                elif msg.subject == 'is friend':
+                    if self.is_friend_callback:
+                        self.is_friend_callback(msg)
+                elif msg.subject == 'friend added':
+                    if self.friend_added_callback:
+                        self.friend_added_callback(msg)
+                elif msg.subject == 'not a friend':
+                    if self.not_a_friend_callback:
+                        self.not_a_friend_callback(msg)
+                elif msg.subject == 'friend is not a user':
+                    if self.friend_is_not_a_user_callback:
+                        self.friend_is_not_a_user_callback(msg)
+                elif msg.subject == 'friend deleted':
+                    if self.friend_deleted_callback:
+                        self.friend_deleted_callback(msg)
+                elif msg.subject == 'closed':
+                    self.connected = False
+                    if self.connection_closed_callback:
+                        self.connection_closed_callback()
+                # no message received or message is unknown
+                else:
+                    if self.fail_callback:
+                        self.fail_callback()
             else:
-                if self.fail_callback:
-                    self.fail_callback()
+                print('not working')
 
     # Requests the Client sends to the server:
     def sign_up(self, username, name):
         self.username, self.name = username, name
-        self.connect_to_server('sign up')
+        protobuf_message = self.create_protobuf_message('sign up')
+        self.connect(protobuf_message)
 
     def login(self, username, name):
         self.username, self.name = username, name
-        self.connect_to_server('login')
+        protobuf_message = self.create_protobuf_message('login')
+        self.connect(protobuf_message)
+
+    def connect(self, protobuf_message):
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.connect_to_server(bytes_string)
+        self.connected = True
+        self.receive_loop()
 
     def logout(self):
         protobuf_message = self.create_protobuf_message('close')
-        self.send_data(protobuf_message)
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.send_data(bytes_string)
 
     def add_friend(self, username_friend, name_friend):
         protobuf_message = self.create_protobuf_message('add friend', username_friend, name_friend=name_friend)
-        self.send_data(protobuf_message)
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.send_data(bytes_string)
 
     def delete_friend(self, username_friend):
         protobuf_message = self.create_protobuf_message('delete friend', username_friend)
-        self.send_data(protobuf_message)
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.send_data(bytes_string)
 
     def request_friends_list(self):
         protobuf_message = self.create_protobuf_message('list friends')
-        self.send_data(protobuf_message)
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.send_data(bytes_string)
 
     def send_message(self, username_friend, message):
         protobuf_message = self.create_protobuf_message('message', username_friend, message)
-        self.send_data(protobuf_message)
-
-    # Basic methods to connect and send data to the server.
-    def connect_to_server(self, request):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('localhost', 10000))
-        # request is 'login' for login or 'sign up' for sign up.
-        protobuf_message = self.create_protobuf_message(request)
-        self.send_data(protobuf_message)
-        self.connected = True
-        self.receive_loop()
+        bytes_string = protobuf_message.SerializeToString()
+        self.data_transfer.send_data(bytes_string)
 
     def create_protobuf_message(self, request, username_friend='', text='', name_friend=''):
         protobuf_message = schema.MessageFromClient()
@@ -123,19 +140,6 @@ class Client:
         protobuf_message.name_friend = name_friend
         protobuf_message.text = text
         return protobuf_message
-
-    def send_data(self, protobuf_message):
-        # todo: Should check for errors sending the data. E.g. connection could be broken.
-        #  Also 'sendall' returns None on success.
-        bytes_string = protobuf_message.SerializeToString()
-        self.sock.sendall(bytes_string)
-
-    def receive_data(self):
-        # todo: solve problem if message is bigger than 1024
-        bytes_string = self.sock.recv(1024)
-        msg = schema.MessageFromServer()
-        msg.ParseFromString(bytes_string)
-        return msg
 
 # Register the callback-functions to the Client.
     def register_callback_fail(self, callback):

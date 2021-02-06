@@ -10,10 +10,9 @@ class TerminalUI:
         self.client = Client()
         self.register_callbacks()
         # todo: rename request_thread to 'get_users_requests_thread' or something else more descriptive
-        # thread will be started in 'login_or_signup'
+        # thread will be started upon callback that sign-up or log-in was successful
         self.request_thread = threading.Thread(target=self.request)
         self.request_thread.daemon = True
-        # todo: 'login_or_signup' should be part of the thread to make the code less complicated
         self.login_or_signup()
 
     def register_callbacks(self):
