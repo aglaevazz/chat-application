@@ -8,7 +8,5 @@ Technologies used:
 - Protobuf3
 
 To do:
-- users.py: wrap functions in class
 - unit tests for Server, Client and users.db
 - optimize code (todo's in code)
-- write Java-Client and create UI with Java using Swing
