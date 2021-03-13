@@ -19,7 +19,6 @@ class DataTransfer:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # todo: set socket to be non-blocking
         self.sock.bind(('localhost', self.port))
-        # todo: socket should listen to max 5 connection requests (5 = normal max)
         self.sock.listen(5)
 
     def new_connection(self):
@@ -27,7 +26,7 @@ class DataTransfer:
         return connection
 
     def connect_to_server(self, bytes_string):
-        self.sock.connect(('localhost', 10000))
+        self.sock.connect(('localhost', self.port))
         # request is 'login' for login or 'sign up' for sign up.
         self.send_data(bytes_string, self.sock)
 

@@ -17,7 +17,6 @@ class Client:
         self.sign_up_failed_occupied_username_callback = None
         self.login_success_callback = None
         self.login_failed_not_a_user_callback = None
-        self.login_failed_already_logged_in_callback = None
         # todo: rename new_message_callback to 'new_message_for_user_callback' or something else more descriptive
         self.new_message_callback = None
         # todo: rename friends_list_callback to 'list_of_friends_callback' or something else more descriptive
@@ -43,9 +42,6 @@ class Client:
                 if msg.subject == 'logged in':
                     if self.login_success_callback:
                         self.login_success_callback()
-                elif msg.subject == 'already logged in':
-                    if self.login_failed_already_logged_in_callback:
-                        self.login_failed_already_logged_in_callback()
                 elif msg.subject == 'not a name/username: login failed':
                     if self.login_failed_not_a_user_callback:
                         self.login_failed_not_a_user_callback()
@@ -86,8 +82,6 @@ class Client:
                 else:
                     if self.fail_callback:
                         self.fail_callback()
-            else:
-                print('not working')
 
     # Requests the Client sends to the server:
     def sign_up(self, username, name):
@@ -156,9 +150,6 @@ class Client:
 
     def register_callback_login_failed_not_a_user(self, callback):
         self.login_failed_not_a_user_callback = callback
-
-    def register_callback_login_failed_already_logged_in(self, callback):
-        self.login_failed_already_logged_in_callback = callback
 
     def register_callback_new_message(self, callback):
         self.new_message_callback = callback

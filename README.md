@@ -7,10 +7,11 @@ Technologies used:
 - Sqlite3
 - Protobuf3
 
-In progess:
-- write unit tests for server
-
 To do:
-- write unit tests for client
-- optimize code (see todos in code)
-- create UI with Java using Swing
+- Server:
+    - implement locks to Server to prevent clients from writing to DB at the same time
+    - put login and sign-up in handle_connection
+- users.py: wrap functions in class
+- unit tests for Server, Client and users.db
+- optimize code (todo's in code)
+- write Java-Client and create UI with Java using Swing

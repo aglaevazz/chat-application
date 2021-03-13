@@ -24,7 +24,6 @@ class TerminalUI:
         # Register sign_up callbacks:
         self.client.register_callback_login_success(self.on_login_success)
         self.client.register_callback_login_failed_not_a_user(self.on_login_failed_not_a_user)
-        self.client.register_callback_login_failed_already_logged_in(self.on_login_failed_already_logged_in)
         # Register other request callbacks:
         self.client.register_callback_new_message(self.on_new_message)
         self.client.register_callback_friends_list(self.on_friends_list)
@@ -160,10 +159,6 @@ class TerminalUI:
 
     def on_login_failed_not_a_user(self):
         print('This is not a registered name or username.')
-        self.login_or_signup()
-
-    def on_login_failed_already_logged_in(self):
-        print('You are already logged in on an other device.')
         self.login_or_signup()
 
 
