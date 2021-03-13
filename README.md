@@ -8,9 +8,6 @@ Technologies used:
 - Protobuf3
 
 To do:
-- Server:
-    - implement locks to Server to prevent clients from writing to DB at the same time
-    - put login and sign-up in handle_connection
 - users.py: wrap functions in class
 - unit tests for Server, Client and users.db
 - optimize code (todo's in code)
