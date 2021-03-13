@@ -8,6 +8,7 @@ from data_transfer import DataTransfer
 
 class Server:
     def __init__(self):
+        self.db = users.Database()
         self.connections = {}
         self.data_transfer = self.initialize_data_transfer()
 
@@ -52,7 +53,7 @@ class Server:
         return
 
     def login(self, msg, connection):
-        if users.is_user(msg.username, msg.name):
+        if self.db.is_user(msg.username, msg.name):
             data = self.create_protobuf_message('logged in')
             data = data.SerializeToString()
             self.data_transfer.send_data(data, connection)
@@ -66,8 +67,8 @@ class Server:
     def sign_up(self, msg, connection):
         lock = threading.Lock()
         lock.acquire()
-        if not users.is_user(msg.username, msg.name):
-            users.add_user(msg.username, msg.name)
+        if not self.db.is_user(msg.username, msg.name):
+            self.db.add_user(msg.username, msg.name)
             lock.release()
             data = self.create_protobuf_message('signed up')
             data = data.SerializeToString()
@@ -79,7 +80,7 @@ class Server:
             self.delete_connection(connection, msg.username)
 
     def send_pending_messages(self, username, connection):
-        pending_messages = users.retrieve_pending_messages(username)
+        pending_messages = self.db.retrieve_pending_messages(username)
         for pending_message in pending_messages:
             sender, text = pending_message
             data = self.create_protobuf_message('message', sender=sender, text=text)
@@ -88,13 +89,13 @@ class Server:
 
     def add_friend(self, msg, connection):
         # todo: rename username_friend to friends_username, name_friend to friends_name
-        if users.is_user(msg.username_friend, msg.name_friend):
-            if users.is_friend(msg.username, msg.username_friend):
+        if self.db.is_user(msg.username_friend, msg.name_friend):
+            if self.db.is_friend(msg.username, msg.username_friend):
                 data = self.create_protobuf_message('is friend', username_friend=msg.username_friend)
                 data = data.SerializeToString()
                 self.data_transfer.send_data(data, connection)
             else:
-                users.add_friend(msg.username, msg.username_friend, msg.name_friend)
+                self.db.add_friend(msg.username, msg.username_friend, msg.name_friend)
                 data = self.create_protobuf_message('friend added', username_friend=msg.username_friend)
                 data = data.SerializeToString()
                 self.data_transfer.send_data(data, connection)
@@ -104,8 +105,8 @@ class Server:
             self.data_transfer.send_data(data, connection)
 
     def delete_friend(self, msg, connection):
-        if users.is_friend(msg.username, msg.username_friend):
-            users.delete_friend(msg.username, msg.username_friend)
+        if self.db.is_friend(msg.username, msg.username_friend):
+            self.db.delete_friend(msg.username, msg.username_friend)
             data = self.create_protobuf_message('friend deleted', username_friend=msg.username_friend)
             data = data.SerializeToString()
             self.data_transfer.send_data(data, connection)
@@ -115,19 +116,19 @@ class Server:
             self.data_transfer.send_data(data, connection)
 
     def list_friends(self, msg, connection):
-        friends = users.list_friends(msg.username)
+        friends = self.db.list_friends(msg.username)
         data = self.create_protobuf_message('friends list', friends=friends)
         data = data.SerializeToString()
         self.data_transfer.send_data(data, connection)
 
     def send_message_to_friend(self, msg, connection):
-        if users.is_friend(msg.username, msg.username_friend):
+        if self.db.is_friend(msg.username, msg.username_friend):
             if msg.username_friend in self.connections:
                 data = self.create_protobuf_message('message', msg.username, msg.text)
                 data = data.SerializeToString()
                 self.data_transfer.send_data(data, self.connections[msg.username_friend])
             else:
-                users.add_pending_message(msg.username_friend, msg.username, msg.text)
+                self.db.add_pending_message(msg.username_friend, msg.username, msg.text)
         else:
             # messages can only be send to friends
             data = self.create_protobuf_message('not a friend', username_friend=msg.username_friend)
@@ -168,8 +169,8 @@ class Server:
 
 if __name__ == '__main__':
     server = Server()
-    if not os.path.isfile('users.db'):
-        users.set_up_database()
+    if not os.path.isfile(server.db.db_name):
+        server.db.set_up_database()
     server.run()
 
 
