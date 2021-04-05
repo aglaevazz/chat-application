@@ -3,7 +3,7 @@ import socket
 
 class DataTransfer:
 
-    def __init__(self, port=10000):
+    def __init__(self, port=10001):
         self.port = port
         self.sock = None
         self.no_msg_received_callback = None

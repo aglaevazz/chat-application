@@ -10,34 +10,34 @@ class Server:
     def __init__(self):
         self.db = users.Database()
         self.connections = {}
-        self.data_transfer = self.initialize_data_transfer()
+        self.data_transfer = None
+        self.is_running = False
+        self.threading = threading
 
     def initialize_data_transfer(self):
-        data_transfer = DataTransfer()
-        data_transfer.set_up()
-        data_transfer.listen_for_connections()
-        data_transfer.register_callback_no_msg_received(self.on_no_msg_received)
-        return data_transfer
+        self.data_transfer.set_up()
+        self.data_transfer.listen_for_connections()
+        self.data_transfer.register_callback_no_msg_received(self.on_no_msg_received)
 
     def run(self):
-        while True:
+        self.is_running = True
+        while self.is_running:
             connection = self.data_transfer.new_connection()
-            threading.Thread(target=self.handle_connection, args=(connection,)).start()
+            self.threading.Thread(target=self.handle_connection, args=(connection,)).start()
 
     def handle_connection(self, connection):
-        bytes_string = self.data_transfer.receive_data(connection)
-        msg = schema.MessageFromClient()
-        msg.ParseFromString(bytes_string)
+        msg = self.receive_msg(connection)
         username = msg.username
         self.connections[username] = connection
         if msg and msg.request == 'login':
             self.login(msg, connection)
         elif msg and msg.request == 'sign up':
             self.sign_up(msg, connection)
+        self.receive_loop(username, connection)
+
+    def receive_loop(self, username, connection):
         while username in self.connections:
-            bytes_string = self.data_transfer.receive_data(connection, username)
-            msg = schema.MessageFromClient()
-            msg.ParseFromString(bytes_string)
+            msg = self.receive_msg(connection)
             if msg.request == 'add friend':
                 self.add_friend(msg, connection)
             elif msg.request == 'delete friend':
@@ -48,9 +48,15 @@ class Server:
                 self.send_message_to_friend(msg, connection)
             elif msg.request == 'close':
                 self.handle_close_request(msg, connection)
-            else:
-                self.delete_connection(connection, msg.username)
+            # else:
+            #     self.delete_connection(connection, msg.username)
         return
+
+    def receive_msg(self, connection):
+        bytes_string = self.data_transfer.receive_data(connection)
+        msg = schema.MessageFromClient()
+        msg.ParseFromString(bytes_string)
+        return msg
 
     def login(self, msg, connection):
         if self.db.is_user(msg.username, msg.name):
@@ -65,7 +71,7 @@ class Server:
             self.delete_connection(connection, msg.username)
 
     def sign_up(self, msg, connection):
-        lock = threading.Lock()
+        lock = self.threading.Lock()
         lock.acquire()
         if not self.db.is_user(msg.username, msg.name):
             self.db.add_user(msg.username, msg.name)
@@ -171,6 +177,8 @@ if __name__ == '__main__':
     server = Server()
     if not os.path.isfile(server.db.db_name):
         server.db.set_up_database()
+    server.data_transfer = DataTransfer()
+    server.initialize_data_transfer()
     server.run()
 
 
