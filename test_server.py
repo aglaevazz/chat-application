@@ -141,6 +141,39 @@ class TestServer(unittest.TestCase):
         self.server.data_transfer.send_data.assert_called_once()
         self.server.delete_connection.assert_called_once_with(connection, msg.username)
 
+    def test_sign_up_not_a_user(self):
+        self.server.db.is_user.return_value = False
+        self.server.create_protobuf_message = Mock()
+        msg = self.create_protobuf_message_from_client('test_message')
+        connection = Mock()
+        self.server.sign_up(msg, connection)
+        self.server.create_protobuf_message.assert_called_once_with('signed up')
+        self.server.db.add_user.assert_called_once_with(msg.username, msg.name)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_sign_up_is_user(self):
+        self.server.db.is_user.return_value = True
+        self.server.create_protobuf_message = Mock()
+        msg = self.create_protobuf_message_from_client('test_message')
+        connection = Mock()
+        self.server.delete_connection = Mock()
+        self.server.sign_up(msg, connection)
+        self.server.create_protobuf_message.assert_called_once_with('occupied username')
+        self.server.data_transfer.send_data.assert_called_once()
+        self.server.delete_connection.assert_called_once_with(connection, msg.username)
+
+    def test_send_pending_messages(self):
+        username = 'test_username'
+        connection = Mock()
+        self.server.db.retrieve_pending_messages = Mock()
+        self.server.db.retrieve_pending_messages.return_value = [('test_user', 'test message')]
+        self.server.create_protobuf_message = Mock()
+        self.server.send_pending_messages(username, connection)
+        self.server.db.retrieve_pending_messages.assert_called_once_with(username)
+        self.server.create_protobuf_message.assert_called_once_with('message', sender='test_user', text='test message')
+        self.server.data_transfer.send_data.assert_called_once()
+
+
     @staticmethod
     def create_protobuf_message_from_client(request, username_friend='', text='', name_friend=''):
         protobuf_message = schema.MessageFromClient()
