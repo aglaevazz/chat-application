@@ -11,6 +11,7 @@ class TestServer(unittest.TestCase):
         self.server = Server()
         self.server.db = Mock()
         self.server.data_transfer = Mock()
+        self.connection = Mock()
 
     def test_initialize_data_transfer(self):
         self.server.initialize_data_transfer()
@@ -171,6 +172,66 @@ class TestServer(unittest.TestCase):
         self.server.send_pending_messages(username, connection)
         self.server.db.retrieve_pending_messages.assert_called_once_with(username)
         self.server.create_protobuf_message.assert_called_once_with('message', sender='test_user', text='test message')
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_add_friend_is_user_and_friend(self):
+        self.server.db.is_user.return_value = True
+        self.server.db.is_friend.return_value = True
+        msg = self.create_protobuf_message_from_client('test_message', username_friend='test_friend_username',
+                                                       name_friend='test_friend_name')
+        self.server.create_protobuf_message = Mock()
+        self.server.add_friend(msg, self.connection)
+        self.server.db.is_user.assert_called_once_with(msg.username_friend, msg.name_friend)
+        self.server.db.is_friend.assert_called_once_with(msg.username, msg.username_friend)
+        self.server.create_protobuf_message.assert_called_once_with('is friend', username_friend=msg.username_friend)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_add_friend_is_user_not_friend(self):
+        self.server.db.is_user.return_value = True
+        self.server.db.is_friend.return_value = False
+        msg = self.create_protobuf_message_from_client('test_message', username_friend='test_friend_username',
+                                                       name_friend='test_friend_name')
+        self.server.create_protobuf_message = Mock()
+        self.server.add_friend(msg, self.connection)
+        self.server.db.add_friend.assert_called_once_with(msg.username, msg.username_friend, msg.name_friend)
+        self.server.create_protobuf_message.assert_called_once_with('friend added', username_friend=msg.username_friend)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_add_friend_not_a_user(self):
+        self.server.db.is_user.return_value = False
+        msg = self.create_protobuf_message_from_client('test_message', username_friend='test_friend_username',
+                                                       name_friend='test_friend_name')
+        self.server.create_protobuf_message = Mock()
+        self.server.add_friend(msg, self.connection)
+        self.server.create_protobuf_message.assert_called_once_with('friend is not a user', username_friend=msg.username_friend)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_delete_friend_who_is_friend(self):
+        self.server.db.is_friend.return_value = True
+        msg = self.create_protobuf_message_from_client('test_message', username_friend='test_friend_username',
+                                                       name_friend='test_friend_name')
+        self.server.create_protobuf_message = Mock()
+        self.server.delete_friend(msg, self.connection)
+        self.server.db.delete_friend.assert_called_once_with(msg.username, msg.username_friend)
+        self.server.create_protobuf_message.assert_called_once_with('friend deleted', username_friend=msg.username_friend)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_delete_friend_who_is_not_a_friend(self):
+        self.server.db.is_friend.return_value = False
+        msg = self.create_protobuf_message_from_client('test_message', username_friend='test_friend_username',
+                                                       name_friend='test_friend_name')
+        self.server.create_protobuf_message = Mock()
+        self.server.delete_friend(msg, self.connection)
+        self.server.create_protobuf_message.assert_called_once_with('not a friend', username_friend=msg.username_friend)
+        self.server.data_transfer.send_data.assert_called_once()
+
+    def test_list_friends(self):
+        self.server.db.list_friends.return_value = ['test', 'list']
+        msg = self.create_protobuf_message_from_client('test_message')
+        self.server.create_protobuf_message = Mock()
+        self.server.list_friends(msg, self.connection)
+        self.server.db.list_friends.assert_called_once_with(msg.username)
+        self.server.create_protobuf_message.assert_called_once_with('friends list', friends=['test', 'list'])
         self.server.data_transfer.send_data.assert_called_once()
 
 
